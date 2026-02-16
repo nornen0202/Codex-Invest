@@ -45,6 +45,42 @@ class AccountPolicy:
 
 
 @dataclass(frozen=True)
+class AssetPolicy:
+    """Per-symbol target and tolerance band."""
+
+    symbol: str
+    target_weight: float
+    band: WeightBand
+
+    def __post_init__(self) -> None:
+        if not self.symbol.strip():
+            raise PolicyValidationError("asset symbol must be non-empty")
+        _validate_weight(self.target_weight, f"asset[{self.symbol}].target_weight")
+        if not self.band.min <= self.target_weight <= self.band.max:
+            raise PolicyValidationError(
+                f"asset[{self.symbol}].target_weight must be within configured band"
+            )
+
+
+@dataclass(frozen=True)
+class DraftOrderSettings:
+    """Tunable draft-order generation settings from policy."""
+
+    relative_band_tolerance: float
+    min_order_amount: float
+    lot_size: float
+    blocked_symbols: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if self.relative_band_tolerance < 0:
+            raise PolicyValidationError("relative_band_tolerance must be >= 0")
+        if self.min_order_amount < 0:
+            raise PolicyValidationError("min_order_amount must be >= 0")
+        if self.lot_size <= 0:
+            raise PolicyValidationError("lot_size must be > 0")
+
+
+@dataclass(frozen=True)
 class PolicyConfig:
     """Portfolio-level policy configuration."""
 
@@ -52,6 +88,8 @@ class PolicyConfig:
     base_currency: str
     risk_profile: str
     account_policies: tuple[AccountPolicy, ...]
+    asset_policies: tuple[AssetPolicy, ...]
+    draft_order_settings: DraftOrderSettings
 
     def __post_init__(self) -> None:
         if self.version < 1:
@@ -60,9 +98,14 @@ class PolicyConfig:
             raise PolicyValidationError("base_currency must be non-empty")
         if not self.risk_profile.strip():
             raise PolicyValidationError("risk_profile must be non-empty")
+
         aliases = [policy.alias for policy in self.account_policies]
         if len(aliases) != len(set(aliases)):
             raise PolicyValidationError("account aliases must be unique")
+
+        symbols = [policy.symbol.upper() for policy in self.asset_policies]
+        if len(symbols) != len(set(symbols)):
+            raise PolicyValidationError("asset symbols must be unique")
 
 
 @dataclass(frozen=True)
@@ -150,9 +193,23 @@ def _load_yaml(path: str | Path) -> dict[str, Any]:
     return data
 
 
+def _build_relative_band(target_weight: float, tolerance: float) -> WeightBand:
+    min_weight = max(0.0, target_weight * (1 - tolerance))
+    max_weight = min(1.0, target_weight * (1 + tolerance))
+    return WeightBand(min=min_weight, max=max_weight)
+
+
 def load_policy_config(path: str | Path) -> PolicyConfig:
     """Load policy YAML and parse into PolicyConfig."""
     raw = _load_yaml(path)
+    draft_raw = raw.get("draft_order", {})
+    settings = DraftOrderSettings(
+        relative_band_tolerance=float(draft_raw.get("relative_band_tolerance", 0.2)),
+        min_order_amount=float(draft_raw.get("min_order_amount", 0.0)),
+        lot_size=float(draft_raw.get("lot_size", 1.0)),
+        blocked_symbols=tuple(symbol.upper() for symbol in draft_raw.get("blocked_symbols", [])),
+    )
+
     account_policies = tuple(
         AccountPolicy(
             alias=item["alias"],
@@ -161,11 +218,30 @@ def load_policy_config(path: str | Path) -> PolicyConfig:
         )
         for item in raw.get("account_policies", [])
     )
+
+    asset_policies = tuple(
+        AssetPolicy(
+            symbol=item["symbol"],
+            target_weight=float(item["target_weight"]),
+            band=(
+                WeightBand(min=float(item["band"]["min"]), max=float(item["band"]["max"]))
+                if "band" in item
+                else _build_relative_band(
+                    target_weight=float(item["target_weight"]),
+                    tolerance=settings.relative_band_tolerance,
+                )
+            ),
+        )
+        for item in raw.get("asset_policies", [])
+    )
+
     return PolicyConfig(
         version=int(raw["version"]),
         base_currency=str(raw["base_currency"]),
         risk_profile=str(raw["risk_profile"]),
         account_policies=account_policies,
+        asset_policies=asset_policies,
+        draft_order_settings=settings,
     )
 
 

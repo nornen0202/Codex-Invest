@@ -19,5 +19,25 @@
         "max": 0.55
       }
     }
+  ],
+  "draft_order": {
+    "relative_band_tolerance": 0.2,
+    "min_order_amount": 10000,
+    "lot_size": 1,
+    "blocked_symbols": ["TQQQ", "SQQQ"]
+  },
+  "asset_policies": [
+    {
+      "symbol": "VTI",
+      "target_weight": 0.60
+    },
+    {
+      "symbol": "BND",
+      "target_weight": 0.40,
+      "band": {
+        "min": 0.35,
+        "max": 0.45
+      }
+    }
   ]
 }

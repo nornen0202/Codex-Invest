@@ -1,4 +1,4 @@
-# Codex-Invest SPEC (Stage 3)
+# Codex-Invest SPEC (Stage 4)
 
 ## 1. 목표
 Codex-Invest는 개인 투자 운영을 위한 **안전한 의사결정 지원 시스템**이다.
@@ -9,7 +9,7 @@ Codex-Invest는 개인 투자 운영을 위한 **안전한 의사결정 지원 �
 - 보유종목 데이터 ingest
 - 정책 파일 기반 포트폴리오 분석
 - 리밸런싱 및 신규매수 계산
-- 초안 주문 파일 생성
+- 초안 주문 파일 생성(JSON)
 
 ### 제외 (영구 금지)
 - 브로커 자동주문 실행
@@ -23,29 +23,20 @@ Codex-Invest는 개인 투자 운영을 위한 **안전한 의사결정 지원 �
 - `base_currency: str`
 - `risk_profile: str`
 - `account_policies: list[AccountPolicy]`
+- `asset_policies: list[AssetPolicy]`
+- `draft_order_settings: DraftOrderSettings`
 
-### AccountPolicy
-- `alias: str`
+### AssetPolicy
+- `symbol: str`
 - `target_weight: float` (0~1)
 - `band.min: float` (0~1)
 - `band.max: float` (0~1, min 이상)
 
-### AccountsConfig
-- `version: int`
-- `accounts: list[AccountDefinition]`
-
-### AccountDefinition
-- `alias: str`
-- `broker: str`
-- `currency: str`
-- `account_type: str`
-
-### RestrictionsConfig
-- `version: int`
-- `restrictions.account_limits[].account_alias: str`
-- `restrictions.account_limits[].max_risk_asset_weight: float` (0~1)
-- `restrictions.blocked_symbols: list[str]`
-- `restrictions.blocked_keywords: list[str]`
+### DraftOrderSettings
+- `relative_band_tolerance: float` (0 이상, 예: 0.2 = 목표비중 ±20%)
+- `min_order_amount: float` (0 이상)
+- `lot_size: float` (>0)
+- `blocked_symbols: list[str]`
 
 ### PositionsSnapshotRow
 - `account_id: str`
@@ -63,41 +54,34 @@ Codex-Invest는 개인 투자 운영을 위한 **안전한 의사결정 지원 �
 - `currency: str`
 - `amount: float`
 
+### OrderDraft
+- `side: "BUY" | "SELL"`
+- `symbol: str`
+- `qty: float`
+- `est_amount: float`
+- `rationale: str`
+- `flags: list[str]`
 
-## 4. 정책 파일 규약
-### 파일 위치
-- `policy/policy.yml` (실파일)
-- `policy/accounts.yml` (실파일)
-- `policy/restrictions.yml` (실파일)
-- `policy/*.example.yml` (샘플)
+## 4. 주문 초안 엔진 규칙
+1. 신규자금(현금)을 우선 사용해 목표 대비 부족 자산을 채운다.
+2. 그래도 밴드 상단을 초과한 자산만 최소 매도로 줄인다.
+3. 제약 위반 주문은 생성하지 않는다(금지 심볼, 최소 주문금액 미달, 가격 부재 등).
 
-### 검증 항목
-- 필수 키 존재
-- 비중 값 범위(0~1)
-- 밴드 유효성(`min <= target_weight <= max`)
-- 계좌 alias 유일성
-- 계좌별 위험자산 상한 위반 여부
-- 금지 종목 및 금지 키워드 포함 여부
+## 5. CLI 워크플로
+1. `init`: 로컬 템플릿 파일 생성/검증
+2. `ingest --input <.xlsx/.csv> --out <dir>`: 표준 스냅샷 parquet 변환
+3. `analyze`: 정책 위반/리밸런싱 필요량 계산 (스캐폴드)
+4. `draft-orders --asof YYYY-MM-DD --policy policy/policy.yml [--positions ... --cash ...]`: 주문 초안 생성
 
-## 5. 주문 초안 출력 포맷(예정)
+## 6. 출력 포맷
 기본 출력 경로: `data/output/`
 
-권장 파일명:
-- `draft_orders_YYYYMMDD.xlsx`
+파일명:
+- `order_drafts_YYYYMMDD.json`
 
-시트 제안:
-1. `orders`
-   - account_alias, symbol, side, quantity, order_type, limit_price, reason_code, note
-2. `summary`
-   - before_weight, target_weight, delta_weight, estimated_cash_change
-3. `validation`
-   - policy_check_name, result, message
-
-## 6. CLI 워크플로
-1. `init`: 로컬 템플릿 파일 생성/검증
-2. `ingest --input <.xlsx/.csv> --out <dir>`: 보유종목 원본을 내부 표준 스키마(`positions_snapshot`, `cash_snapshot`) parquet로 변환
-3. `analyze`: 정책 위반/리밸런싱 필요량 계산
-4. `draft-orders`: 주문 초안 파일 생성
+JSON 구조:
+- `asof`
+- `order_drafts[]` (`side`, `symbol`, `qty`, `est_amount`, `rationale`, `flags`)
 
 ## 7. 비기능 요구사항
 - Python 3.11+
