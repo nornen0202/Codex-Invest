@@ -1,4 +1,4 @@
-# Codex-Invest SPEC (Stage 4)
+# Codex-Invest SPEC (Stage 5)
 
 ## 1. 목표
 Codex-Invest는 개인 투자 운영을 위한 **안전한 의사결정 지원 시스템**이다.
@@ -9,7 +9,7 @@ Codex-Invest는 개인 투자 운영을 위한 **안전한 의사결정 지원 �
 - 보유종목 데이터 ingest
 - 정책 파일 기반 포트폴리오 분석
 - 리밸런싱 및 신규매수 계산
-- 초안 주문 파일 생성(JSON)
+- 초안 주문 파일 생성(JSON/XLSX/TXT)
 
 ### 제외 (영구 금지)
 - 브로커 자동주문 실행
@@ -55,6 +55,7 @@ Codex-Invest는 개인 투자 운영을 위한 **안전한 의사결정 지원 �
 - `amount: float`
 
 ### OrderDraft
+- `account_id: str`
 - `side: "BUY" | "SELL"`
 - `symbol: str`
 - `qty: float`
@@ -78,10 +79,19 @@ Codex-Invest는 개인 투자 운영을 위한 **안전한 의사결정 지원 �
 
 파일명:
 - `order_drafts_YYYYMMDD.json`
+- `order_draft.xlsx`
+- `order_draft.txt`
 
 JSON 구조:
 - `asof`
-- `order_drafts[]` (`side`, `symbol`, `qty`, `est_amount`, `rationale`, `flags`)
+- `order_drafts[]` (`account_id`, `side`, `symbol`, `qty`, `est_amount`, `rationale`, `flags`)
+
+XLSX 구조:
+- `SUMMARY`: 계좌별 현재/목표/편차/제약 위반 경고
+- `ACCOUNT_<id>`: 계좌별 주문 리스트 + 복붙용 텍스트 라인
+
+TXT 구조:
+- 계좌별 섹션(`[ACCOUNT_<id>]`) 아래 `SYMBOL BUY|SELL QTY` 라인
 
 ## 7. 비기능 요구사항
 - Python 3.11+

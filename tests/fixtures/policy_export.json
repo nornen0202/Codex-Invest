@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "base_currency": "USD",
+  "risk_profile": "balanced",
+  "account_policies": [
+    {"alias": "A", "target_weight": 0.6, "band": {"min": 0.5, "max": 0.7}},
+    {"alias": "B", "target_weight": 0.4, "band": {"min": 0.3, "max": 0.5}}
+  ],
+  "draft_order": {
+    "relative_band_tolerance": 0.2,
+    "min_order_amount": 0,
+    "lot_size": 1,
+    "blocked_symbols": []
+  },
+  "asset_policies": [
+    {"symbol": "AAA", "target_weight": 0.6},
+    {"symbol": "BBB", "target_weight": 0.4}
+  ]
+}

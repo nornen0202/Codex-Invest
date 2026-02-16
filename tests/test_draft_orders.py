@@ -12,10 +12,15 @@ from codex_invest.cli import main
 from codex_invest.core.draft_orders import (
     DraftOrderError,
     generate_order_drafts,
+    generate_order_drafts_by_account,
+    write_order_draft_text,
+    write_order_draft_xlsx,
     write_order_drafts,
 )
 from codex_invest.core.ingest import CashSnapshot, PositionSnapshot
 from codex_invest.core.policy import load_policy_config
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
 def _policy_file(tmp_path: Path, payload: dict[str, object]) -> Path:
@@ -146,6 +151,51 @@ def test_write_order_drafts_json(tmp_path: Path) -> None:
     assert out_path.exists()
 
 
+def test_export_order_draft_workbook_and_text(tmp_path: Path) -> None:
+    pytest.importorskip("openpyxl")
+    policy_payload = json.loads((FIXTURES_DIR / "policy_export.json").read_text(encoding="utf-8"))
+    policy = load_policy_config(_policy_file(tmp_path, policy_payload))
+    positions_payload = json.loads(
+        (FIXTURES_DIR / "positions_export.json").read_text(encoding="utf-8")
+    )
+    cash_payload = json.loads((FIXTURES_DIR / "cash_export.json").read_text(encoding="utf-8"))
+    positions = [PositionSnapshot(**row) for row in positions_payload]
+    cash = [CashSnapshot(**row) for row in cash_payload]
+
+    drafts_by_account = generate_order_drafts_by_account(
+        positions=positions,
+        cash=cash,
+        policy=policy,
+    )
+    xlsx_path = write_order_draft_xlsx(
+        drafts_by_account=drafts_by_account,
+        positions=positions,
+        cash=cash,
+        policy=policy,
+        out_dir=tmp_path,
+    )
+    txt_path = write_order_draft_text(drafts_by_account=drafts_by_account, out_dir=tmp_path)
+
+    assert xlsx_path == tmp_path / "order_draft.xlsx"
+    assert txt_path == tmp_path / "order_draft.txt"
+
+    workbook_mod = pytest.importorskip("openpyxl")
+    workbook = workbook_mod.load_workbook(xlsx_path)
+    assert workbook.sheetnames == ["SUMMARY", "ACCOUNT_A", "ACCOUNT_B"]
+
+    summary_sheet = workbook["SUMMARY"]
+    assert summary_sheet["A2"].value == "A"
+    assert summary_sheet["A3"].value == "B"
+
+    account_sheet = workbook["ACCOUNT_A"]
+    assert account_sheet["A1"].value == "side"
+    assert isinstance(account_sheet["G2"].value, str)
+
+    text_lines = txt_path.read_text(encoding="utf-8")
+    assert "[ACCOUNT_A]" in text_lines
+    assert "AAA BUY" in text_lines
+
+
 def test_cli_draft_orders_end_to_end(tmp_path: Path) -> None:
     pa = pytest.importorskip("pyarrow")
     pq = pytest.importorskip("pyarrow.parquet")
@@ -192,3 +242,5 @@ def test_cli_draft_orders_end_to_end(tmp_path: Path) -> None:
 
     assert exit_code == 0
     assert (tmp_path / "order_drafts_20260101.json").exists()
+    assert (tmp_path / "order_draft.xlsx").exists()
+    assert (tmp_path / "order_draft.txt").exists()

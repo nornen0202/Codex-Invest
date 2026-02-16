@@ -1,0 +1,4 @@
+[
+  {"account_id": "A", "account_type": "taxable", "currency": "USD", "amount": 100.0},
+  {"account_id": "B", "account_type": "taxable", "currency": "USD", "amount": 50.0}
+]
