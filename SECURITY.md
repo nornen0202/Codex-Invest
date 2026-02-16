@@ -14,6 +14,12 @@ Codex-Invest는 민감한 금융 데이터를 다룰 수 있으므로, 다음 �
 - 정책/계정 파일은 샘플(`*.example.yml`) 기반으로 생성
 - 테스트 데이터는 synthetic 데이터만 사용
 
+
+## XLSX Importer 안전수칙
+- `report cashflow`/`ingest`용 엑셀은 신뢰 가능한 내보내기 파일만 사용
+- 본 프로젝트는 매크로 실행이나 외부 네트워크 호출 없이 셀 값만 읽음
+- 원본 엑셀은 로컬(`data/raw/`)에만 보관하고 저장소에는 synthetic fixture만 커밋
+
 ## 비밀정보 관리
 - API 키/토큰 필요 시 `.env` 또는 별도 secret manager 사용
 - 코드/문서/이슈/PR 본문에 credential 노출 금지

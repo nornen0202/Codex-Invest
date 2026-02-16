@@ -7,6 +7,15 @@ from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
 
+from codex_invest.connectors.banksalad_xlsx import (
+    BankSaladImportError,
+    import_banksalad_monthly_snapshots,
+)
+from codex_invest.core.cashflow_report import (
+    build_cashflow_report,
+    write_cashflow_csv,
+    write_cashflow_markdown,
+)
 from codex_invest.core.draft_orders import (
     DraftOrderError,
     generate_order_drafts,
@@ -74,6 +83,29 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output directory for order_drafts artifact.",
     )
 
+    report_parser = subparsers.add_parser("report", help="Generate operational reports.")
+    report_subparsers = report_parser.add_subparsers(
+        dest="report_command",
+        metavar="REPORT_COMMAND",
+    )
+
+    cashflow_parser = report_subparsers.add_parser(
+        "cashflow",
+        help="Build monthly cashflow/net-worth trend report from BankSalad xlsx.",
+    )
+    cashflow_parser.add_argument("--input", type=Path, required=True)
+    cashflow_parser.add_argument(
+        "--format",
+        choices=("markdown", "csv"),
+        default="markdown",
+        help="Output format for the report.",
+    )
+    cashflow_parser.add_argument(
+        "--out",
+        type=Path,
+        help="Output path. Defaults to data/output/cashflow_report.(md|csv)",
+    )
+
     return parser
 
 
@@ -124,6 +156,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"order_draft_xlsx: {xlsx_path}")
         print(f"order_draft_text: {text_path}")
         print(f"count: {len(drafts)}")
+        return 0
+
+    if args.command == "report":
+        if args.report_command != "cashflow":
+            parser.error("report command requires a subcommand. Try: report cashflow")
+
+        try:
+            snapshots = import_banksalad_monthly_snapshots(args.input)
+            report_rows = build_cashflow_report(snapshots)
+            out_path = args.out
+            if out_path is None:
+                extension = "md" if args.format == "markdown" else "csv"
+                out_path = Path(f"data/output/cashflow_report.{extension}")
+
+            if args.format == "markdown":
+                write_cashflow_markdown(report_rows, out_path)
+            else:
+                write_cashflow_csv(report_rows, out_path)
+        except (BankSaladImportError, OSError) as exc:
+            parser.error(str(exc))
+
+        print(f"cashflow_report: {out_path}")
+        print(f"months: {len(report_rows)}")
         return 0
 
     print(f"[{args.command}] command is scaffolded and not implemented yet.")

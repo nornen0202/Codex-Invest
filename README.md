@@ -34,6 +34,7 @@ python -m codex_invest init
 python -m codex_invest ingest --input fixtures/holdings_sample.xlsx --out data/staging
 python -m codex_invest analyze
 python -m codex_invest draft-orders --asof 2026-01-15 --policy policy/policy.yml
+python -m codex_invest report cashflow --input data/raw/banksalad_export.xlsx
 ```
 
 `ingest` 명령은 표준 holdings 템플릿(`.xlsx`/`.csv`)을 읽어 아래 2개 표준 스냅샷을 생성합니다.
@@ -41,6 +42,20 @@ python -m codex_invest draft-orders --asof 2026-01-15 --policy policy/policy.yml
 - `cash_snapshot.parquet`
 
 컬럼 규격은 `docs/holdings_template.md`를 참고하세요.
+
+
+`report cashflow` 명령은 뱅크샐러드 엑셀(`.xlsx`)에서 월별 수입/지출/순현금흐름/순자산 추이를 가능한 범위 내에서 파싱하여,
+투자 가능 현금(추정)과 납입 루틴 상태(`ON_TRACK`/`BELOW_ROUTINE`)를 보고서로 생성합니다.
+
+예시:
+```bash
+codex-invest report cashflow --input data/raw/banksalad_export.xlsx
+codex-invest report cashflow --input data/raw/banksalad_export.xlsx --format csv --out data/output/cashflow_report.csv
+```
+
+기본 출력 경로:
+- `data/output/cashflow_report.md` (markdown 기본)
+- `data/output/cashflow_report.csv` (`--format csv` 선택 시)
 
 
 `draft-orders` 명령 예시:
