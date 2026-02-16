@@ -6,6 +6,7 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 from codex_invest.core.ingest import CashSnapshot, PositionSnapshot
 from codex_invest.core.policy import PolicyConfig
@@ -15,6 +16,7 @@ from codex_invest.core.policy import PolicyConfig
 class OrderDraft:
     """Order draft payload."""
 
+    account_id: str
     side: str
     symbol: str
     qty: float
@@ -114,6 +116,7 @@ def generate_order_drafts(
     positions: list[PositionSnapshot],
     cash: list[CashSnapshot],
     policy: PolicyConfig,
+    account_id: str = "TOTAL",
 ) -> list[OrderDraft]:
     """Generate BUY/SELL order drafts from snapshots and policy."""
     if not policy.asset_policies:
@@ -152,6 +155,7 @@ def generate_order_drafts(
         if candidate.symbol in blocked_symbols:
             drafts.append(
                 OrderDraft(
+                    account_id=account_id,
                     side="BUY",
                     symbol=candidate.symbol,
                     qty=0.0,
@@ -166,6 +170,7 @@ def generate_order_drafts(
         if state.price is None or state.price <= 0:
             drafts.append(
                 OrderDraft(
+                    account_id=account_id,
                     side="BUY",
                     symbol=candidate.symbol,
                     qty=0.0,
@@ -185,6 +190,7 @@ def generate_order_drafts(
         if est_amount < min_order_amount:
             drafts.append(
                 OrderDraft(
+                    account_id=account_id,
                     side="BUY",
                     symbol=candidate.symbol,
                     qty=0.0,
@@ -197,6 +203,7 @@ def generate_order_drafts(
 
         drafts.append(
             OrderDraft(
+                account_id=account_id,
                 side="BUY",
                 symbol=candidate.symbol,
                 qty=qty,
@@ -240,6 +247,7 @@ def generate_order_drafts(
 
         drafts.append(
             OrderDraft(
+                account_id=account_id,
                 side="SELL",
                 symbol=symbol,
                 qty=qty,
@@ -250,6 +258,150 @@ def generate_order_drafts(
         )
 
     return drafts
+
+
+def generate_order_drafts_by_account(
+    positions: list[PositionSnapshot],
+    cash: list[CashSnapshot],
+    policy: PolicyConfig,
+) -> dict[str, list[OrderDraft]]:
+    """Generate order drafts independently per account_id."""
+    account_ids = sorted({row.account_id for row in positions} | {row.account_id for row in cash})
+    return {
+        account_id: generate_order_drafts(
+            positions=[row for row in positions if row.account_id == account_id],
+            cash=[row for row in cash if row.account_id == account_id],
+            policy=policy,
+            account_id=account_id,
+        )
+        for account_id in account_ids
+    }
+
+
+def _account_values(
+    positions: list[PositionSnapshot],
+    cash: list[CashSnapshot],
+) -> dict[str, float]:
+    values: dict[str, float] = {}
+    for row in positions:
+        value = row.value
+        if value is None:
+            value = row.qty * row.price if row.price else 0.0
+        values[row.account_id] = values.get(row.account_id, 0.0) + value
+    for row in cash:
+        values[row.account_id] = values.get(row.account_id, 0.0) + row.amount
+    return values
+
+
+def _target_account_values(policy: PolicyConfig, portfolio_total: float) -> dict[str, float]:
+    return {
+        item.alias: round(portfolio_total * item.target_weight, 2)
+        for item in policy.account_policies
+    }
+
+
+def _summary_row(
+    account_id: str,
+    current_value: float,
+    target_values: dict[str, float],
+    drafts: list[OrderDraft],
+) -> list[Any]:
+    target_value = target_values.get(account_id, current_value)
+    deviation = round(current_value - target_value, 2)
+    flags = sorted({flag for draft in drafts for flag in draft.flags})
+    warning_text = ",".join(flags)
+    return [account_id, round(current_value, 2), target_value, deviation, warning_text]
+
+
+def _order_text_line(draft: OrderDraft) -> str:
+    qty = int(draft.qty) if draft.qty.is_integer() else draft.qty
+    return f"{draft.symbol} {draft.side} {qty}"
+
+
+def _format_header_row(sheet: Any) -> None:
+    from openpyxl.styles import Font
+
+    for cell in sheet[1]:
+        cell.font = Font(bold=True)
+    sheet.freeze_panes = "A2"
+
+
+def write_order_draft_xlsx(
+    drafts_by_account: dict[str, list[OrderDraft]],
+    positions: list[PositionSnapshot],
+    cash: list[CashSnapshot],
+    policy: PolicyConfig,
+    out_dir: Path,
+) -> Path:
+    """Write xlsx workbook with summary and per-account draft tabs."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "order_draft.xlsx"
+
+    from openpyxl import Workbook
+
+    workbook = Workbook()
+    summary = workbook.active
+    summary.title = "SUMMARY"
+    summary.append(["account_id", "current", "target", "deviation", "warnings"])
+
+    current_values = _account_values(positions=positions, cash=cash)
+    total_value = sum(current_values.values())
+    target_values = _target_account_values(policy=policy, portfolio_total=total_value)
+
+    for account_id in sorted(current_values):
+        summary.append(
+            _summary_row(
+                account_id=account_id,
+                current_value=current_values[account_id],
+                target_values=target_values,
+                drafts=drafts_by_account.get(account_id, []),
+            )
+        )
+    _format_header_row(summary)
+
+    for account_id in sorted(drafts_by_account):
+        sheet = workbook.create_sheet(title=f"ACCOUNT_{account_id}")
+        sheet.append(["side", "symbol", "qty", "est_amount", "rationale", "flags", "text"])
+        drafts = sorted(drafts_by_account[account_id], key=lambda item: (item.side, item.symbol))
+        for draft in drafts:
+            sheet.append(
+                [
+                    draft.side,
+                    draft.symbol,
+                    draft.qty,
+                    draft.est_amount,
+                    draft.rationale,
+                    ",".join(draft.flags),
+                    _order_text_line(draft),
+                ]
+            )
+        _format_header_row(sheet)
+
+    workbook.save(out_path)
+    return out_path
+
+
+def write_order_draft_text(
+    drafts_by_account: dict[str, list[OrderDraft]],
+    out_dir: Path,
+) -> Path:
+    """Write copy/paste order lines grouped by account."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "order_draft.txt"
+
+    lines: list[str] = []
+    for account_id in sorted(drafts_by_account):
+        lines.append(f"[ACCOUNT_{account_id}]")
+        for draft in sorted(
+            drafts_by_account[account_id],
+            key=lambda item: (item.side, item.symbol),
+        ):
+            if draft.qty > 0:
+                lines.append(_order_text_line(draft))
+        lines.append("")
+
+    out_path.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
+    return out_path
 
 
 def write_order_drafts(

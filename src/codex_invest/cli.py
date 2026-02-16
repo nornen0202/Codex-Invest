@@ -10,7 +10,10 @@ from pathlib import Path
 from codex_invest.core.draft_orders import (
     DraftOrderError,
     generate_order_drafts,
+    generate_order_drafts_by_account,
     load_snapshots,
+    write_order_draft_text,
+    write_order_draft_xlsx,
     write_order_drafts,
 )
 from codex_invest.core.ingest import HoldingsImportError, import_holdings
@@ -97,11 +100,29 @@ def main(argv: Sequence[str] | None = None) -> int:
             policy = load_policy_config(args.policy)
             positions, cash = load_snapshots(args.positions, args.cash)
             drafts = generate_order_drafts(positions=positions, cash=cash, policy=policy)
+            drafts_by_account = generate_order_drafts_by_account(
+                positions=positions,
+                cash=cash,
+                policy=policy,
+            )
             out_path = write_order_drafts(drafts=drafts, asof=args.asof, out_dir=args.out)
+            xlsx_path = write_order_draft_xlsx(
+                drafts_by_account=drafts_by_account,
+                positions=positions,
+                cash=cash,
+                policy=policy,
+                out_dir=args.out,
+            )
+            text_path = write_order_draft_text(
+                drafts_by_account=drafts_by_account,
+                out_dir=args.out,
+            )
         except (PolicyValidationError, DraftOrderError, FileNotFoundError, OSError) as exc:
             parser.error(str(exc))
 
         print(f"order_drafts: {out_path}")
+        print(f"order_draft_xlsx: {xlsx_path}")
+        print(f"order_draft_text: {text_path}")
         print(f"count: {len(drafts)}")
         return 0
 

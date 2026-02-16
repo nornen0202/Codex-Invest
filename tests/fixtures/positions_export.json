@@ -1,0 +1,32 @@
+[
+  {
+    "account_id": "A",
+    "account_type": "taxable",
+    "symbol": "AAA",
+    "name": "AAA",
+    "qty": 2.0,
+    "currency": "USD",
+    "price": 100.0,
+    "value": 200.0
+  },
+  {
+    "account_id": "A",
+    "account_type": "taxable",
+    "symbol": "BBB",
+    "name": "BBB",
+    "qty": 1.0,
+    "currency": "USD",
+    "price": 100.0,
+    "value": 100.0
+  },
+  {
+    "account_id": "B",
+    "account_type": "taxable",
+    "symbol": "BBB",
+    "name": "BBB",
+    "qty": 2.0,
+    "currency": "USD",
+    "price": 100.0,
+    "value": 200.0
+  }
+]

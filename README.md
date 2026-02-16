@@ -54,6 +54,8 @@ codex_invest draft-orders --asof 2026-01-15 --policy policy/policy.yml
 
 출력:
 - `data/output/order_drafts_YYYYMMDD.json`
+- `data/output/order_draft.xlsx` (`SUMMARY`, `ACCOUNT_<id>` 시트)
+- `data/output/order_draft.txt` (복붙용 `SYMBOL BUY|SELL QTY` 라인)
 - 각 주문 항목: `side`, `symbol`, `qty`, `est_amount`, `rationale`, `flags`
 
 정책의 `draft_order.relative_band_tolerance`(예: 0.2)는 목표비중 대비 허용 밴드를 자동 계산합니다.
