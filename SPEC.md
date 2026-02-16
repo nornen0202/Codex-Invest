@@ -1,4 +1,4 @@
-# Codex-Invest SPEC (Stage 2)
+# Codex-Invest SPEC (Stage 3)
 
 ## 1. 목표
 Codex-Invest는 개인 투자 운영을 위한 **안전한 의사결정 지원 시스템**이다.
@@ -47,6 +47,23 @@ Codex-Invest는 개인 투자 운영을 위한 **안전한 의사결정 지원 �
 - `restrictions.blocked_symbols: list[str]`
 - `restrictions.blocked_keywords: list[str]`
 
+### PositionsSnapshotRow
+- `account_id: str`
+- `account_type: str` (`taxable` | `irp` | `pension`)
+- `symbol: str`
+- `name: str`
+- `qty: float`
+- `currency: str`
+- `price: float | None`
+- `value: float | None` (없으면 `qty * price` 계산)
+
+### CashSnapshotRow
+- `account_id: str`
+- `account_type: str` (`taxable` | `irp` | `pension`)
+- `currency: str`
+- `amount: float`
+
+
 ## 4. 정책 파일 규약
 ### 파일 위치
 - `policy/policy.yml` (실파일)
@@ -76,9 +93,9 @@ Codex-Invest는 개인 투자 운영을 위한 **안전한 의사결정 지원 �
 3. `validation`
    - policy_check_name, result, message
 
-## 6. CLI 워크플로(예정)
+## 6. CLI 워크플로
 1. `init`: 로컬 템플릿 파일 생성/검증
-2. `ingest`: 보유종목 원본을 내부 표준 스키마로 변환
+2. `ingest --input <.xlsx/.csv> --out <dir>`: 보유종목 원본을 내부 표준 스키마(`positions_snapshot`, `cash_snapshot`) parquet로 변환
 3. `analyze`: 정책 위반/리밸런싱 필요량 계산
 4. `draft-orders`: 주문 초안 파일 생성
 
