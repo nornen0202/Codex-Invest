@@ -1,4 +1,4 @@
-# Codex-Invest SPEC (Stage 1)
+# Codex-Invest SPEC (Stage 2)
 
 ## 1. 목표
 Codex-Invest는 개인 투자 운영을 위한 **안전한 의사결정 지원 시스템**이다.
@@ -17,51 +17,52 @@ Codex-Invest는 개인 투자 운영을 위한 **안전한 의사결정 지원 �
 - 비공식 API 호출/스크래핑
 - 투자자문(확정 매수/매도 추천)
 
-## 3. 데이터 모델(초안)
-### HoldingsRecord
-- `account_alias: str`
-- `symbol: str`
-- `asset_class: str`
-- `quantity: float`
-- `avg_cost: float | None`
-- `market_price: float | None`
-- `market_value: float | None`
-- `currency: str`
-- `as_of_date: date`
-
+## 3. 데이터 모델
 ### PolicyConfig
+- `version: int`
 - `base_currency: str`
 - `risk_profile: str`
-- `constraints.max_single_asset_weight: float`
-- `constraints.min_cash_weight: float`
-- `constraints.max_sector_weight: float`
-- `rebalancing.threshold_bps: int`
-- `execution.mode: "draft_only"`
+- `account_policies: list[AccountPolicy]`
 
-### DraftOrder
-- `account_alias: str`
-- `symbol: str`
-- `side: Literal["BUY", "SELL"]`
-- `quantity: float`
-- `order_type: Literal["MARKET", "LIMIT"]`
-- `limit_price: float | None`
-- `reason_code: str`
-- `note: str`
+### AccountPolicy
+- `alias: str`
+- `target_weight: float` (0~1)
+- `band.min: float` (0~1)
+- `band.max: float` (0~1, min 이상)
+
+### AccountsConfig
+- `version: int`
+- `accounts: list[AccountDefinition]`
+
+### AccountDefinition
+- `alias: str`
+- `broker: str`
+- `currency: str`
+- `account_type: str`
+
+### RestrictionsConfig
+- `version: int`
+- `restrictions.account_limits[].account_alias: str`
+- `restrictions.account_limits[].max_risk_asset_weight: float` (0~1)
+- `restrictions.blocked_symbols: list[str]`
+- `restrictions.blocked_keywords: list[str]`
 
 ## 4. 정책 파일 규약
-- 위치: `policy/policy.yml` (실파일), `policy/policy.example.yml` (샘플)
-- 형식: YAML
-- 검증 항목:
-  - 필수 키 존재
-  - 값 범위(0~1 비중, threshold 양수)
-  - `execution.allow_auto_order`는 항상 `false`
+### 파일 위치
+- `policy/policy.yml` (실파일)
+- `policy/accounts.yml` (실파일)
+- `policy/restrictions.yml` (실파일)
+- `policy/*.example.yml` (샘플)
 
-## 5. 계정 매핑 파일 규약
-- 위치: `policy/accounts.yml` (실파일), `policy/accounts.example.yml` (샘플)
-- 목적: 브로커/계좌별 ingest 포맷 매핑
-- 민감정보 금지: 실계좌번호 저장 금지, 별칭(alias)만 사용
+### 검증 항목
+- 필수 키 존재
+- 비중 값 범위(0~1)
+- 밴드 유효성(`min <= target_weight <= max`)
+- 계좌 alias 유일성
+- 계좌별 위험자산 상한 위반 여부
+- 금지 종목 및 금지 키워드 포함 여부
 
-## 6. 주문 초안 출력 포맷(예정)
+## 5. 주문 초안 출력 포맷(예정)
 기본 출력 경로: `data/output/`
 
 권장 파일명:
@@ -75,13 +76,13 @@ Codex-Invest는 개인 투자 운영을 위한 **안전한 의사결정 지원 �
 3. `validation`
    - policy_check_name, result, message
 
-## 7. CLI 워크플로(예정)
+## 6. CLI 워크플로(예정)
 1. `init`: 로컬 템플릿 파일 생성/검증
 2. `ingest`: 보유종목 원본을 내부 표준 스키마로 변환
 3. `analyze`: 정책 위반/리밸런싱 필요량 계산
 4. `draft-orders`: 주문 초안 파일 생성
 
-## 8. 비기능 요구사항
+## 7. 비기능 요구사항
 - Python 3.11+
 - 테스트 가능 구조(도메인 로직은 core 모듈에 집중)
 - 재현성(입력이 같으면 출력 동일)

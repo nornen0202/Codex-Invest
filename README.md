@@ -50,6 +50,31 @@ tests/                      # 테스트
 .github/workflows/          # CI
 ```
 
+
+## 정책 파일 수정 가이드
+정책 관련 파일은 `policy/` 아래 3개 템플릿을 복사해 사용합니다. 현재 로더는 JSON 호환 YAML(예: JSON 문법) 형식을 사용합니다.
+
+- `policy/policy.example.yml`: 계좌별 목표 비중(`target_weight`)과 허용 밴드(`band.min/max`)
+- `policy/accounts.example.yml`: 계좌 별칭/브로커/통화/계좌유형
+- `policy/restrictions.example.yml`: 계좌별 위험자산 상한과 금지 종목/키워드
+
+예시 (`policy/restrictions.yml`):
+```yaml
+{
+  "version": 1,
+  "restrictions": {
+    "account_limits": [{"account_alias": "irp", "max_risk_asset_weight": 0.70}],
+    "blocked_symbols": ["TQQQ", "SQQQ"],
+    "blocked_keywords": ["레버리지", "인버스", "leverage", "inverse"]
+  }
+}
+```
+
+검증 로직은 다음 규칙을 검사합니다.
+- 계좌별 위험자산 비중이 상한을 초과하는지
+- 금지 종목 목록에 포함된 심볼인지
+- 종목명에 금지 키워드가 포함되는지
+
 ## 품질 확인
 ```bash
 python -m pytest

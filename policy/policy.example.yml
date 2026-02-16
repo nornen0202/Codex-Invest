@@ -1,14 +1,23 @@
-# Example investment policy template for Codex-Invest.
-version: 1
-base_currency: KRW
-risk_profile: balanced
-constraints:
-  max_single_asset_weight: 0.20
-  min_cash_weight: 0.05
-  max_sector_weight: 0.35
-rebalancing:
-  threshold_bps: 250
-  lot_size: 1
-execution:
-  mode: draft_only
-  allow_auto_order: false
+{
+  "version": 2,
+  "base_currency": "KRW",
+  "risk_profile": "balanced",
+  "account_policies": [
+    {
+      "alias": "taxable_main",
+      "target_weight": 0.55,
+      "band": {
+        "min": 0.45,
+        "max": 0.65
+      }
+    },
+    {
+      "alias": "irp",
+      "target_weight": 0.45,
+      "band": {
+        "min": 0.35,
+        "max": 0.55
+      }
+    }
+  ]
+}
