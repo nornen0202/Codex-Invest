@@ -10,7 +10,10 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Proprietary" }
 authors = [{ name = "Codex-Invest Maintainers" }]
-dependencies = []
+dependencies = [
+  "openpyxl>=3.1.0",
+  "pyarrow>=16.0.0",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -46,4 +49,3 @@ strict = false
 warn_unused_ignores = true
 warn_redundant_casts = true
 warn_return_any = true
-

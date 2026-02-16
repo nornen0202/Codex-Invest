@@ -28,15 +28,19 @@ python -m pip install -e .[dev]
 python -m codex_invest --help
 ```
 
-플레이스홀더 명령:
+명령 예시:
 ```bash
 python -m codex_invest init
-python -m codex_invest ingest
+python -m codex_invest ingest --input fixtures/holdings_sample.xlsx --out data/staging
 python -m codex_invest analyze
 python -m codex_invest draft-orders
 ```
 
-현재 명령들은 스캐폴딩 상태이며, 다음 단계에서 실제 도메인 로직(보유종목 import, 정책 검증, 주문초안 생성)을 구현합니다.
+`ingest` 명령은 표준 holdings 템플릿(`.xlsx`/`.csv`)을 읽어 아래 2개 표준 스냅샷을 생성합니다.
+- `positions_snapshot.parquet`
+- `cash_snapshot.parquet`
+
+컬럼 규격은 `docs/holdings_template.md`를 참고하세요.
 
 ## 디렉토리 구조
 ```text
@@ -82,7 +86,6 @@ python -m ruff check .
 ```
 
 ## 다음 구현 예정
-1. 보유종목 템플릿 ingest 파이프라인
-2. `policy.yml` 기반 제약 검증
-3. 리밸런싱/신규매수 계산
-4. 주문 초안 엑셀 출력 (draft only)
+1. `policy.yml` 기반 제약 검증 고도화
+2. 리밸런싱/신규매수 계산
+3. 주문 초안 엑셀 출력 (draft only)
