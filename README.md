@@ -33,7 +33,7 @@ python -m codex_invest --help
 python -m codex_invest init
 python -m codex_invest ingest --input fixtures/holdings_sample.xlsx --out data/staging
 python -m codex_invest analyze
-python -m codex_invest draft-orders
+python -m codex_invest draft-orders --asof 2026-01-15 --policy policy/policy.yml
 ```
 
 `ingest` 명령은 표준 holdings 템플릿(`.xlsx`/`.csv`)을 읽어 아래 2개 표준 스냅샷을 생성합니다.
@@ -41,6 +41,24 @@ python -m codex_invest draft-orders
 - `cash_snapshot.parquet`
 
 컬럼 규격은 `docs/holdings_template.md`를 참고하세요.
+
+
+`draft-orders` 명령 예시:
+```bash
+codex_invest draft-orders --asof 2026-01-15 --policy policy/policy.yml
+```
+
+기본 입력 경로:
+- `data/output/positions_snapshot.parquet`
+- `data/output/cash_snapshot.parquet`
+
+출력:
+- `data/output/order_drafts_YYYYMMDD.json`
+- 각 주문 항목: `side`, `symbol`, `qty`, `est_amount`, `rationale`, `flags`
+
+정책의 `draft_order.relative_band_tolerance`(예: 0.2)는 목표비중 대비 허용 밴드를 자동 계산합니다.
+`draft_order.min_order_amount`, `draft_order.lot_size`, `draft_order.blocked_symbols`로 주문 생성 제약을 제어합니다.
+
 
 ## 디렉토리 구조
 ```text

@@ -23,6 +23,8 @@ def test_load_policy_example() -> None:
     assert config.version == 2
     assert len(config.account_policies) == 2
     assert config.account_policies[0].alias == "taxable_main"
+    assert len(config.asset_policies) == 2
+    assert config.draft_order_settings.relative_band_tolerance == 0.2
 
 
 def test_load_accounts_example() -> None:
