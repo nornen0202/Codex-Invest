@@ -1,11 +1,17 @@
-# Example account mapping (sanitized, no real account identifiers).
-version: 1
-accounts:
-  - alias: primary_taxable
-    broker: broker_template
-    currency: KRW
-    account_type: taxable
-  - alias: retirement
-    broker: broker_template
-    currency: KRW
-    account_type: pension
+{
+  "version": 1,
+  "accounts": [
+    {
+      "alias": "taxable_main",
+      "broker": "broker_template",
+      "currency": "KRW",
+      "account_type": "taxable"
+    },
+    {
+      "alias": "irp",
+      "broker": "broker_template",
+      "currency": "KRW",
+      "account_type": "pension"
+    }
+  ]
+}

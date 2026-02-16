@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "restrictions": {
+    "account_limits": [
+      {
+        "account_alias": "irp",
+        "max_risk_asset_weight": 0.7
+      }
+    ],
+    "blocked_symbols": ["TQQQ", "SQQQ"],
+    "blocked_keywords": ["레버리지", "인버스", "leverage", "inverse"]
+  }
+}
