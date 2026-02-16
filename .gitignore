@@ -1,0 +1,39 @@
+# Python cache/build
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+.venv/
+
+# Local environment
+.env
+.env.*
+
+# IDE/editor
+.vscode/
+.idea/
+
+# Project data (never commit private raw/output files)
+data/raw/*
+!data/raw/.gitkeep
+data/output/*
+!data/output/.gitkeep
+
+# Sensitive office/document formats by default
+*.xls
+*.xlsx
+*.xlsm
+*.csv
+*.parquet
+*.jsonl
+
+# Allow curated templates and specs
+!policy/*.yml
+!policy/*.yaml
