@@ -193,7 +193,18 @@ def test_export_order_draft_workbook_and_text(tmp_path: Path) -> None:
 
     text_lines = txt_path.read_text(encoding="utf-8")
     assert "[ACCOUNT_A]" in text_lines
-    assert "AAA BUY" in text_lines
+
+    actionable_lines = []
+    for drafts in drafts_by_account.values():
+        for draft in drafts:
+            if draft.qty <= 0:
+                continue
+            qty = int(draft.qty) if draft.qty.is_integer() else draft.qty
+            actionable_lines.append(f"{draft.symbol} {draft.side} {qty}")
+
+    assert actionable_lines
+    for line in actionable_lines:
+        assert line in text_lines
 
 
 def test_cli_draft_orders_end_to_end(tmp_path: Path) -> None:
